@@ -145,6 +145,7 @@ function LandingPage() {
   const [status, setStatus] = useState('')
   const [joinStatus, setJoinStatus] = useState('')
   const pageRef = useRef(null)
+  const stripSentinelRef = useRef(null)
 
   const t = (text) => (hindi ? translations[text] || text : text)
   const tickerItems = hindi ? tickerHi : tickerEn
@@ -161,6 +162,21 @@ function LandingPage() {
 
   useEffect(() => {
     document.title = 'Astro Satguru - Premium AI Vedic Astrology, Horoscopes & Sacred Shop'
+  }, [])
+
+  useEffect(() => {
+    const sentinel = stripSentinelRef.current
+    if (!sentinel) return undefined
+    const navH = parseFloat(getComputedStyle(document.documentElement).fontSize) * 4
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const strip = sentinel.nextElementSibling
+        if (strip) strip.classList.toggle('astro-strip-stuck', !entry.isIntersecting)
+      },
+      { rootMargin: `-${navH}px 0px 0px 0px`, threshold: 0 }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
   }, [])
 
   useEffect(() => {
@@ -184,7 +200,7 @@ function LandingPage() {
   }, [])
 
   const track = (intent, metadata = {}) => {
-    publicService.trackCta(intent, metadata).catch(() => {})
+    publicService.trackCta(intent, metadata).catch(() => { })
   }
 
   const handleNewsletter = async (event) => {
@@ -277,6 +293,7 @@ function LandingPage() {
         </div>
       </section>
 
+      <div ref={stripSentinelRef} style={{ height: 0, pointerEvents: 'none', visibility: 'hidden' }} />
       <div className="astro-strip" id="astrologers">
         <div className="astro-float">
           {doubledAstrologers.map((item, index) => (

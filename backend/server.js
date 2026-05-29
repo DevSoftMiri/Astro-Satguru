@@ -21,9 +21,18 @@ import { errorHandler, notFound } from './middleware/errorMiddleware.js'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: resolve(__dirname, '.env') })
 
+const normalizeOrigin = (value) => {
+  if (!value) return null
+  try {
+    return new URL(value).origin
+  } catch {
+    return value
+  }
+}
+
 const app = express()
 const allowedOrigins = [
-  ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map((origin) => origin.trim()) : []),
+  ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map((origin) => normalizeOrigin(origin.trim())) : []),
   'http://localhost:5173',
   'http://127.0.0.1:5173',
 ].filter(Boolean)
@@ -49,6 +58,7 @@ app.use(
   }),
 )
 
+app.get('/', (_req, res) => res.status(200).json({ success: true, message: 'Welcome to Astro Satguru API!' }))
 app.get('/health', (_req, res) => res.json({ success: true, service: 'Astro Satguru API' }))
 app.use('/api/public', publicRoutes)
 app.use('/api/auth', authRoutes)
