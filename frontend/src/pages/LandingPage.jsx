@@ -145,7 +145,9 @@ function LandingPage() {
   const [status, setStatus] = useState('')
   const [joinStatus, setJoinStatus] = useState('')
   const pageRef = useRef(null)
-  const stripSentinelRef = useRef(null)
+  const headerRef = useRef(null)
+  const astroStripRef = useRef(null)
+  const spacerRef = useRef(null)
 
   const t = (text) => (hindi ? translations[text] || text : text)
   const tickerItems = hindi ? tickerHi : tickerEn
@@ -164,21 +166,72 @@ function LandingPage() {
     document.title = 'Astro Satguru - Premium AI Vedic Astrology, Horoscopes & Sacred Shop'
   }, [])
 
+  // ── JS-driven sticky strip ──
+  // overflow-x: hidden on <main> breaks CSS position:sticky on children.
+  // Solution: use a scroll listener. We measure the strip's natural top offset
+  // once on mount, then on every scroll event we check if the viewport has
+  // scrolled past that point (accounting for the fixed navbar height).
+  // When it has, we switch the strip to position:fixed and show a spacer div
+  // (same height as the strip) so the content below doesn't jump.
   useEffect(() => {
-    const sentinel = stripSentinelRef.current
-    if (!sentinel) return undefined
-    const navH = parseFloat(getComputedStyle(document.documentElement).fontSize) * 4
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        const strip = sentinel.nextElementSibling
-        if (strip) strip.classList.toggle('astro-strip-stuck', !entry.isIntersecting)
-      },
-      { rootMargin: `-${navH}px 0px 0px 0px`, threshold: 0 }
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
+    const strip = astroStripRef.current
+    const spacer = spacerRef.current
+    if (!strip || !spacer) return
+
+    // Cache the strip's natural top relative to the document
+    // We read it AFTER paint so layout is settled.
+    let stripNaturalTop = null
+
+    const getNavH = () =>
+      headerRef.current ? headerRef.current.getBoundingClientRect().height : 64
+
+    const measure = () => {
+      // Temporarily unfix so we get the true natural position
+      const wasFixed = strip.classList.contains('astro-strip-fixed')
+      if (wasFixed) {
+        strip.classList.remove('astro-strip-fixed')
+        spacer.classList.remove('active')
+      }
+      stripNaturalTop = strip.getBoundingClientRect().top + window.scrollY
+      if (wasFixed) {
+        strip.classList.add('astro-strip-fixed')
+        spacer.classList.add('active')
+      }
+    }
+
+    // Initial measure on next frame (after layout)
+    requestAnimationFrame(measure)
+
+    const onScroll = () => {
+      if (stripNaturalTop === null) return
+      const navH = getNavH()
+      const shouldFix = window.scrollY + navH >= stripNaturalTop
+
+      if (shouldFix) {
+        strip.classList.add('astro-strip-fixed')
+        spacer.classList.add('active')
+      } else {
+        strip.classList.remove('astro-strip-fixed')
+        spacer.classList.remove('active')
+      }
+    }
+
+    // Re-measure on resize (strip's natural top may change)
+    const onResize = () => {
+      measure()
+      onScroll()
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onResize, { passive: true })
+
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onResize)
+    }
   }, [])
 
+  // ── Scroll-reveal animations ──
   useEffect(() => {
     const root = pageRef.current
     if (!root) return undefined
@@ -233,9 +286,12 @@ function LandingPage() {
 
   return (
     <main className="landing-page" ref={pageRef} lang={hindi ? 'hi' : 'en'}>
-      <header className="landing-header">
+      {/* ── Navbar ── */}
+      <header className="landing-header" ref={headerRef}>
         <div className="landing-container landing-nav">
-          <a href="#home" className="landing-logo"><span className="landing-logo-mark">✦</span>Astro Satguru<span className="gradient-gold-text">.</span></a>
+          <a href="#home" className="landing-logo">
+            <span className="landing-logo-mark">✦</span>Astro Satguru<span className="gradient-gold-text">.</span>
+          </a>
           <nav className="landing-nav-links">
             <a href="#home">{t('Home')}</a>
             <a href="#services">{t('Services')}</a>
@@ -243,28 +299,52 @@ function LandingPage() {
             <a href="#astrologers">{t('Astrologers')}</a>
           </nav>
           <div className="landing-nav-right">
-            <button className="translate-btn" type="button" onClick={() => setHindi((value) => !value)}>{hindi ? 'A' : 'अ'}</button>
-            <a href="#astrologers" className="landing-btn landing-btn-outline hide-mobile">{t('Talk to an astrologer')}</a>
+            <button className="translate-btn" type="button" onClick={() => setHindi((v) => !v)}>
+              {hindi ? 'A' : 'अ'}
+            </button>
+            <a href="#astrologers" className="landing-btn landing-btn-outline hide-mobile">
+              {t('Talk to an astrologer')}
+            </a>
             <button className="landing-icon-btn" type="button" aria-label="Cart">🛍</button>
             <button className="landing-menu-btn" type="button" onClick={() => setMobileOpen(true)} aria-label="Menu">☰</button>
           </div>
         </div>
       </header>
 
-      <div className={`mobile-nav ${mobileOpen ? 'open' : ''}`} onClick={(event) => event.target === event.currentTarget && setMobileOpen(false)}>
+      {/* ── Mobile nav ── */}
+      <div
+        className={`mobile-nav ${mobileOpen ? 'open' : ''}`}
+        onClick={(e) => e.target === e.currentTarget && setMobileOpen(false)}
+      >
         <div className="mobile-nav-panel">
           <button className="mobile-nav-close" type="button" onClick={() => setMobileOpen(false)}>✕</button>
           {['Home', 'Services', 'Shop', 'Astrologers'].map((item) => (
-            <a key={item} href={`#${item.toLowerCase() === 'home' ? 'home' : item.toLowerCase()}`} onClick={() => setMobileOpen(false)}>{t(item)}</a>
+            <a
+              key={item}
+              href={`#${item.toLowerCase()}`}
+              onClick={() => setMobileOpen(false)}
+            >
+              {t(item)}
+            </a>
           ))}
         </div>
       </div>
 
+      {/* ── Hero ── */}
       <section id="home" className="landing-hero">
-        <div className="hero-bg"><img src="https://res.cloudinary.com/dzrg0utcm/image/upload/v1779692948/ChatGPT_Image_May_25_2026_12_20_50_PM_rvnud1.png" alt="Vedic astrology background" /></div>
+        <div className="hero-bg">
+          <img
+            src="https://res.cloudinary.com/dzrg0utcm/image/upload/v1779692948/ChatGPT_Image_May_25_2026_12_20_50_PM_rvnud1.png"
+            alt="Vedic astrology background"
+          />
+        </div>
         <div className="ticker-wrap">
           <div className="ticker-track">
-            {[...tickerItems, ...tickerItems].map((item, index) => <span className="ticker-item" key={`${item}-${index}`}>{item}<span className="sep">✦</span></span>)}
+            {[...tickerItems, ...tickerItems].map((item, index) => (
+              <span className="ticker-item" key={`${item}-${index}`}>
+                {item}<span className="sep">✦</span>
+              </span>
+            ))}
           </div>
         </div>
         <div className="landing-container hero-inner">
@@ -273,10 +353,18 @@ function LandingPage() {
             <h1>{t('Your trust is our identity')}</h1>
             <p>{t('Get personalized horoscopes, Kundli matching, and live astrology guidance-all in one place.')}</p>
             <div className="hero-ctas">
-              <a href="#horoscope" className="landing-btn landing-btn-lg landing-btn-gold" onClick={() => track('Get horoscope')}>{t('Get Your Horoscope')}</a>
-              <a href="#kundli" className="landing-btn landing-btn-lg landing-btn-ghost-light" onClick={() => track('Generate Kundli')}>{t('Generate Kundli')}</a>
-              <a href="#astrologers" className="landing-btn landing-btn-lg landing-btn-ghost-light" onClick={() => track('Talk to Astrologer')}>{t('Talk to an Astrologer')}</a>
-              <a href="#shop" className="landing-btn landing-btn-lg landing-btn-ghost-light">{t('Visit Shop')}</a>
+              <a href="#horoscope" className="landing-btn landing-btn-lg landing-btn-gold" onClick={() => track('Get horoscope')}>
+                {t('Get Your Horoscope')}
+              </a>
+              <a href="#kundli" className="landing-btn landing-btn-lg landing-btn-ghost-light" onClick={() => track('Generate Kundli')}>
+                {t('Generate Kundli')}
+              </a>
+              <a href="#astrologers" className="landing-btn landing-btn-lg landing-btn-ghost-light" onClick={() => track('Talk to Astrologer')}>
+                {t('Talk to an Astrologer')}
+              </a>
+              <a href="#shop" className="landing-btn landing-btn-lg landing-btn-ghost-light">
+                {t('Visit Shop')}
+              </a>
             </div>
           </div>
           <div className="pricing-banner">
@@ -288,53 +376,101 @@ function LandingPage() {
                 {index === 2 && <span className="best-tag">{t('Best')}</span>}
               </div>
             ))}
-            <button className="landing-btn landing-btn-gold price-button" type="button" onClick={() => track('Start AI Sage')}>{t('Start Now')} →</button>
+            <button className="landing-btn landing-btn-gold price-button" type="button" onClick={() => track('Start AI Sage')}>
+              {t('Start Now')} →
+            </button>
           </div>
         </div>
       </section>
 
-      <div ref={stripSentinelRef} style={{ height: 0, pointerEvents: 'none', visibility: 'hidden' }} />
-      <div className="astro-strip" id="astrologers">
+      {/*
+        ── Astro strip + spacer ──
+        The spacer sits immediately before the strip in DOM order and is
+        display:none by default. When JS adds .astro-strip-fixed to the strip
+        (making it leave normal flow), it simultaneously adds .active to the
+        spacer so the content below doesn't jump up.
+      */}
+      <div
+        ref={spacerRef}
+        className="astro-strip-spacer"
+        aria-hidden="true"
+      />
+      <div className="astro-strip" id="astrologers" ref={astroStripRef}>
         <div className="astro-float">
           {doubledAstrologers.map((item, index) => (
             <div className="astro-strip-item" key={`${item.name}-${index}`}>
-              <div className="astro-circle"><img src={item.img} alt={item.name} /></div>
-              <div className="astro-strip-text"><p>{item.name}</p><span>{item.sub}</span></div>
+              <div className="astro-circle">
+                <img src={item.img} alt={item.name} />
+              </div>
+              <div className="astro-strip-text">
+                <p>{item.name}</p>
+                <span>{item.sub}</span>
+              </div>
               <b>✦</b>
             </div>
           ))}
         </div>
       </div>
 
+      {/* ── Concerns ── */}
       <section className="bg-cream">
         <div className="landing-container">
           <SectionHead eyebrow={t("What's troubling you?")} title={t('The Stars have answers.')} />
           <div className="landing-grid landing-grid-4 stagger-children">
             {concerns.map((item) => (
-              <a className="landing-card landing-card-hover concern anim-fade-up" href="#services" key={item.q} onClick={() => track('Concern card', { concern: item.q })}>
-                <div className="concern-img-wrap"><img src={item.img} alt={item.q} loading="lazy" /><div className="concern-overlay" /></div>
-                <div className="concern-body"><span>{item.i}</span><p>{hindi ? item.hi : item.q}</p><small>{t('Find guidance')} →</small></div>
-                <div className="concern-hover-label"><p>{hindi ? item.hi : item.q}</p><span>{t('Find guidance')} →</span></div>
+              <a
+                className="landing-card landing-card-hover concern anim-fade-up"
+                href="#services"
+                key={item.q}
+                onClick={() => track('Concern card', { concern: item.q })}
+              >
+                <div className="concern-img-wrap">
+                  <img src={item.img} alt={item.q} loading="lazy" />
+                  <div className="concern-overlay" />
+                </div>
+                <div className="concern-body">
+                  <span>{item.i}</span>
+                  <p>{hindi ? item.hi : item.q}</p>
+                  <small>{t('Find guidance')} →</small>
+                </div>
+                <div className="concern-hover-label">
+                  <p>{hindi ? item.hi : item.q}</p>
+                  <span>{t('Find guidance')} →</span>
+                </div>
               </a>
             ))}
           </div>
         </div>
       </section>
 
+      {/* ── Services ── */}
       <section id="services">
         <div className="landing-container">
           <SectionHead eyebrow={t('Our Services')} title={t('Six ways to read your stars.')} />
           <div className="landing-grid landing-grid-3 stagger-children">
             {services.map((service) => (
-              <button className="landing-card landing-card-hover service anim-fade-up" type="button" key={service.t} onClick={() => track(service.t)}>
-                <div className="service-img"><img src={service.img} alt={service.t} loading="lazy" /><span>{service.i}</span></div>
-                <div className="service-body"><h3>{hindi ? service.hi : service.t}</h3><p>{service.s}</p><b>{service.cta} →</b></div>
+              <button
+                className="landing-card landing-card-hover service anim-fade-up"
+                type="button"
+                key={service.t}
+                onClick={() => track(service.t)}
+              >
+                <div className="service-img">
+                  <img src={service.img} alt={service.t} loading="lazy" />
+                  <span>{service.i}</span>
+                </div>
+                <div className="service-body">
+                  <h3>{hindi ? service.hi : service.t}</h3>
+                  <p>{service.s}</p>
+                  <b>{service.cta} →</b>
+                </div>
               </button>
             ))}
           </div>
         </div>
       </section>
 
+      {/* ── Horoscope ── */}
       <section id="horoscope" className="bg-cream-soft">
         <div className="landing-container two-col">
           <div className="anim-fade-up">
@@ -342,105 +478,228 @@ function LandingPage() {
             <h2 className="landing-section-title">{t('What the stars say today?')}</h2>
             <p className="muted">{t('Choose your zodiac sign and get personalized AI-powered Vedic insights.')}</p>
             <div className="zodiac">
-              {zodiacSigns.map((sign) => <button className={`zb ${activeSign === sign ? 'active' : ''}`} type="button" key={sign} onClick={() => setActiveSign(sign)}>{sign}</button>)}
+              {zodiacSigns.map((sign) => (
+                <button
+                  className={`zb ${activeSign === sign ? 'active' : ''}`}
+                  type="button"
+                  key={sign}
+                  onClick={() => setActiveSign(sign)}
+                >
+                  {sign}
+                </button>
+              ))}
             </div>
           </div>
           <div className="horoscope-card anim-fade-up">
-            <div className="horoscope-head"><h3>{activeSign}</h3><span>{today}</span></div>
+            <div className="horoscope-head">
+              <h3>{activeSign}</h3>
+              <span>{today}</span>
+            </div>
             <p className="horoscope-summary">"{horoscope.summary}"</p>
             <div className="h-rows">
-              {['love', 'career', 'health'].map((key) => <div className="h-row" key={key}><span>{key}</span><p>{horoscope[key]}</p></div>)}
+              {['love', 'career', 'health'].map((key) => (
+                <div className="h-row" key={key}>
+                  <span>{key}</span>
+                  <p>{horoscope[key]}</p>
+                </div>
+              ))}
             </div>
-            <div className="h-foot"><span>Lucky number: <b>{horoscope.n}</b></span><span>Lucky color: <b>{horoscope.c}</b></span></div>
+            <div className="h-foot">
+              <span>Lucky number: <b>{horoscope.n}</b></span>
+              <span>Lucky color: <b>{horoscope.c}</b></span>
+            </div>
           </div>
         </div>
       </section>
 
-      <FeatureSection id="kundli" eyebrow={t('Janam Kundli')} title={t('Get your astrology reading in seconds')} image="https://images.unsplash.com/photo-1532968961962-8a0cb3a2d4f5?auto=format&fit=crop&w=1400&q=80" cta={t('Generate my Kundli')} />
+      {/* ── Kundli ── */}
+      <FeatureSection
+        id="kundli"
+        eyebrow={t('Janam Kundli')}
+        title={t('Get your astrology reading in seconds')}
+        image="https://images.unsplash.com/photo-1532968961962-8a0cb3a2d4f5?auto=format&fit=crop&w=1400&q=80"
+        cta={t('Generate my Kundli')}
+      />
 
+      {/* ── Compatibility ── */}
       <section className="bg-cream">
         <div className="landing-container two-col">
           <div className="anim-fade-up">
             <p className="landing-eyebrow">{t('Compatibility')}</p>
             <h2 className="landing-section-title">{t('Two souls, one perfect match.')}</h2>
             <p className="muted">Ashtakoot Guna Milan combined with AI interpretation reveals emotional, mental and karmic harmony.</p>
-            <div className="compat-card"><div className="score">28</div><div><small>Sample match score</small><p>Aanya & Ishaan - Strongly aligned</p><span>Emotional 82% · Mental 74% · Spiritual 88%</span></div></div>
-            <button className="landing-btn landing-btn-lg landing-btn-gold" type="button" onClick={() => track('Check compatibility')}>{t('Check compatibility')}</button>
+            <div className="compat-card">
+              <div className="score">28</div>
+              <div>
+                <small>Sample match score</small>
+                <p>Aanya & Ishaan - Strongly aligned</p>
+                <span>Emotional 82% · Mental 74% · Spiritual 88%</span>
+              </div>
+            </div>
+            <button className="landing-btn landing-btn-lg landing-btn-gold" type="button" onClick={() => track('Check compatibility')}>
+              {t('Check compatibility')}
+            </button>
           </div>
-          <div className="rounded-img tall anim-fade-up"><img src="https://res.cloudinary.com/dzrg0utcm/image/upload/v1779794291/collage_450x550_vrubaw.jpg" alt="Couple compatibility" /></div>
+          <div className="rounded-img tall anim-fade-up">
+            <img src="https://res.cloudinary.com/dzrg0utcm/image/upload/v1779794291/collage_450x550_vrubaw.jpg" alt="Couple compatibility" />
+          </div>
         </div>
       </section>
 
+      {/* ── AI card ── */}
       <section>
         <div className="landing-container">
           <div className="ai-card anim-fade-up">
             <span className="pill">✦ AI Sage</span>
             <h2>{t('Based on traditional Astrology, explained in your language.')}</h2>
             <p className="muted">Our AI is grounded in Brihat Parashara Hora Shastra, Phaladeepika and centuries of Vedic tradition, then refined by master astrologers so every reading feels human, warm and precise.</p>
-            <div className="ai-actions"><button className="landing-btn landing-btn-gold" type="button" onClick={() => track('Ask AI sage')}>{t('Ask the AI sage')}</button><a href="#services" className="landing-btn landing-btn-outline">{t('Explore services')}</a></div>
+            <div className="ai-actions">
+              <button className="landing-btn landing-btn-gold" type="button" onClick={() => track('Ask AI sage')}>
+                {t('Ask the AI sage')}
+              </button>
+              <a href="#services" className="landing-btn landing-btn-outline">{t('Explore services')}</a>
+            </div>
           </div>
         </div>
       </section>
 
+      {/* ── Shop ── */}
       <section id="shop" className="bg-cream-soft">
         <div className="landing-container">
-          <div className="flex-between anim-fade-up"><div><p className="landing-eyebrow">{t('Sacred objects')}</p><h2 className="landing-section-title">{t('Crafted with intention.')}</h2></div><a href="#shop" className="text-gold hide-mobile">{t('View all')} →</a></div>
+          <div className="flex-between anim-fade-up">
+            <div>
+              <p className="landing-eyebrow">{t('Sacred objects')}</p>
+              <h2 className="landing-section-title">{t('Crafted with intention.')}</h2>
+            </div>
+            <a href="#shop" className="text-gold hide-mobile">{t('View all')} →</a>
+          </div>
           <div className="products stagger-children">
             {products.map((product) => (
               <article className="landing-card landing-card-hover product anim-fade-up" key={product.n}>
-                <div className="product-img"><img src={product.img} alt={product.n} loading="lazy" />{product.o && <span>Sale</span>}</div>
-                <div className="product-body"><small>{product.c}</small><h3>{product.n}</h3><p>★ {product.r}</p><div><b>{inr(product.p)}</b>{product.o && <del>{inr(product.o)}</del>}</div></div>
+                <div className="product-img">
+                  <img src={product.img} alt={product.n} loading="lazy" />
+                  {product.o && <span>Sale</span>}
+                </div>
+                <div className="product-body">
+                  <small>{product.c}</small>
+                  <h3>{product.n}</h3>
+                  <p>★ {product.r}</p>
+                  <div>
+                    <b>{inr(product.p)}</b>
+                    {product.o && <del>{inr(product.o)}</del>}
+                  </div>
+                </div>
               </article>
             ))}
           </div>
         </div>
       </section>
 
+      {/* ── Testimonials ── */}
       <section className="bg-cream">
         <div className="landing-container">
           <SectionHead eyebrow={t('Words from seekers')} title={t('Loved across India.')} />
           <div className="landing-grid landing-grid-3 stagger-children">
-            {testimonials.map((item) => <article className="landing-card testimonial anim-fade-up" key={item.n}><span>"</span><p>{item.t}</p><div><img src={item.img} alt="" /><b>{item.n}</b><small>{item.c}</small></div></article>)}
+            {testimonials.map((item) => (
+              <article className="landing-card testimonial anim-fade-up" key={item.n}>
+                <span>"</span>
+                <p>{item.t}</p>
+                <div>
+                  <img src={item.img} alt="" />
+                  <b>{item.n}</b>
+                  <small>{item.c}</small>
+                </div>
+              </article>
+            ))}
           </div>
         </div>
       </section>
 
+      {/* ── Trust stats ── */}
       <section className="trust-section">
         <div className="landing-container landing-grid landing-grid-4">
-          {trustStats.map(([number, label]) => <div className="landing-card trust-card anim-fade-up" key={label}><b>{number}</b><span>{label}</span></div>)}
+          {trustStats.map(([number, label]) => (
+            <div className="landing-card trust-card anim-fade-up" key={label}>
+              <b>{number}</b>
+              <span>{label}</span>
+            </div>
+          ))}
         </div>
       </section>
 
+      {/* ── FAQ ── */}
       <section>
         <div className="landing-container faq-wrap">
           <SectionHead eyebrow={t('Questions')} title={t('Frequently asked.')} />
-          <div className="faq-list anim-fade-up">{faqs.map(([question, answer]) => <details className="landing-card faq" key={question}><summary>{question}</summary><p>{answer}</p></details>)}</div>
+          <div className="faq-list anim-fade-up">
+            {faqs.map(([question, answer]) => (
+              <details className="landing-card faq" key={question}>
+                <summary>{question}</summary>
+                <p>{answer}</p>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 
+      {/* ── Footer ── */}
       <footer>
         <div className="landing-container foot">
-          <div><div className="landing-logo"><span className="landing-logo-mark">✦</span>Astro Satguru</div><p>Experience modern Vedic astrology with AI-powered insights and spiritual guidance rooted in India's ancient wisdom.</p><button className="landing-btn landing-btn-gold" type="button" onClick={() => setJoinOpen(true)}>{t('Join Us')} →</button></div>
+          <div>
+            <div className="landing-logo">
+              <span className="landing-logo-mark">✦</span>Astro Satguru
+            </div>
+            <p>Experience modern Vedic astrology with AI-powered insights and spiritual guidance rooted in India's ancient wisdom.</p>
+            <button className="landing-btn landing-btn-gold" type="button" onClick={() => setJoinOpen(true)}>
+              {t('Join Us')} →
+            </button>
+          </div>
           <FooterColumn title={t('Services')} items={['Daily horoscope', 'Kundli', 'Compatibility', 'Full report']} />
           <FooterColumn title={t('Shop')} items={['Rings & gemstones', 'Malas & rudraksha', 'Yantras', 'Accessories']} />
-          <div><h4>{t('Newsletter')}</h4><p>{t('Receive your weekly cosmic forecast.')}</p><form className="news" onSubmit={handleNewsletter}><input type="email" placeholder="your@email.com" value={newsletterEmail} onChange={(event) => setNewsletterEmail(event.target.value)} required /><button type="submit">{t('Join')}</button></form>{status && <small className="form-status">{status}</small>}</div>
+          <div>
+            <h4>{t('Newsletter')}</h4>
+            <p>{t('Receive your weekly cosmic forecast.')}</p>
+            <form className="news" onSubmit={handleNewsletter}>
+              <input
+                type="email"
+                placeholder="your@email.com"
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
+                required
+              />
+              <button type="submit">{t('Join')}</button>
+            </form>
+            {status && <small className="form-status">{status}</small>}
+          </div>
         </div>
         <div className="copyright">© {new Date().getFullYear()} Astro Satguru. Crafted with devotion in Bharat.</div>
       </footer>
 
+      {/* ── Join modal ── */}
       {joinOpen && (
-        <div className="modal-overlay active" onClick={(event) => event.target === event.currentTarget && setJoinOpen(false)}>
+        <div
+          className="modal-overlay active"
+          onClick={(e) => e.target === e.currentTarget && setJoinOpen(false)}
+        >
           <div className="modal-content">
             <button className="modal-close" type="button" onClick={() => setJoinOpen(false)}>✕</button>
             <h2>{t('Join Our Team')}</h2>
             <form onSubmit={handleJoinSubmit}>
-              <FormField label="Full Name *" value={joinForm.name} onChange={(value) => setJoinForm((form) => ({ ...form, name: value }))} required />
-              <FormField label="Phone Number *" value={joinForm.phone} onChange={(value) => setJoinForm((form) => ({ ...form, phone: value }))} type="tel" required />
-              <FormField label="Years of Experience" value={joinForm.experience} onChange={(value) => setJoinForm((form) => ({ ...form, experience: value }))} type="number" />
-              <FormField label="Social Media Profile Link" value={joinForm.social} onChange={(value) => setJoinForm((form) => ({ ...form, social: value }))} type="url" placeholder="https://..." />
-              <label className="form-group">About You / Bio<textarea value={joinForm.about} onChange={(event) => setJoinForm((form) => ({ ...form, about: event.target.value }))} /></label>
-              <label className="form-group">Resume (PDF)<input type="file" accept=".pdf" onChange={(event) => setJoinForm((form) => ({ ...form, resumeName: event.target.files?.[0]?.name || '' }))} /></label>
-              <button className="form-submit" type="submit">{joinStatus === 'Sending...' ? joinStatus : t('Submit Application')}</button>
+              <FormField label="Full Name *" value={joinForm.name} onChange={(v) => setJoinForm((f) => ({ ...f, name: v }))} required />
+              <FormField label="Phone Number *" value={joinForm.phone} onChange={(v) => setJoinForm((f) => ({ ...f, phone: v }))} type="tel" required />
+              <FormField label="Years of Experience" value={joinForm.experience} onChange={(v) => setJoinForm((f) => ({ ...f, experience: v }))} type="number" />
+              <FormField label="Social Media Profile Link" value={joinForm.social} onChange={(v) => setJoinForm((f) => ({ ...f, social: v }))} type="url" placeholder="https://..." />
+              <label className="form-group">
+                About You / Bio
+                <textarea value={joinForm.about} onChange={(e) => setJoinForm((f) => ({ ...f, about: e.target.value }))} />
+              </label>
+              <label className="form-group">
+                Resume (PDF)
+                <input type="file" accept=".pdf" onChange={(e) => setJoinForm((f) => ({ ...f, resumeName: e.target.files?.[0]?.name || '' }))} />
+              </label>
+              <button className="form-submit" type="submit">
+                {joinStatus === 'Sending...' ? joinStatus : t('Submit Application')}
+              </button>
               {joinStatus && <p className="form-status">{joinStatus}</p>}
             </form>
           </div>
@@ -451,26 +710,60 @@ function LandingPage() {
 }
 
 function SectionHead({ eyebrow, title }) {
-  return <div className="section-head anim-fade-up"><p className="landing-eyebrow">{eyebrow}</p><h2>{title}</h2></div>
+  return (
+    <div className="section-head anim-fade-up">
+      <p className="landing-eyebrow">{eyebrow}</p>
+      <h2>{title}</h2>
+    </div>
+  )
 }
 
 function FeatureSection({ id, eyebrow, title, image, cta }) {
   return (
     <section id={id}>
       <div className="landing-container two-col">
-        <div className="rounded-img anim-fade-up"><img src={image} alt={title} /></div>
-        <div className="anim-fade-up"><p className="landing-eyebrow">{eyebrow}</p><h2 className="landing-section-title">{title}</h2><p className="muted">A complete Vedic birth chart with planetary placements, dasha periods and ascendant analysis rendered in a beautifully readable format.</p><ul className="checklist"><li>Ascendant & Moon sign analysis</li><li>Vimshottari dasha timeline</li><li>House-by-house interpretation</li><li>Personalised remedies</li></ul><button className="landing-btn landing-btn-lg landing-btn-gold" type="button">{cta}</button></div>
+        <div className="rounded-img anim-fade-up">
+          <img src={image} alt={title} />
+        </div>
+        <div className="anim-fade-up">
+          <p className="landing-eyebrow">{eyebrow}</p>
+          <h2 className="landing-section-title">{title}</h2>
+          <p className="muted">A complete Vedic birth chart with planetary placements, dasha periods and ascendant analysis rendered in a beautifully readable format.</p>
+          <ul className="checklist">
+            <li>Ascendant & Moon sign analysis</li>
+            <li>Vimshottari dasha timeline</li>
+            <li>House-by-house interpretation</li>
+            <li>Personalised remedies</li>
+          </ul>
+          <button className="landing-btn landing-btn-lg landing-btn-gold" type="button">{cta}</button>
+        </div>
       </div>
     </section>
   )
 }
 
 function FooterColumn({ title, items }) {
-  return <div><h4>{title}</h4><ul>{items.map((item) => <li key={item}>{item}</li>)}</ul></div>
+  return (
+    <div>
+      <h4>{title}</h4>
+      <ul>{items.map((item) => <li key={item}>{item}</li>)}</ul>
+    </div>
+  )
 }
 
 function FormField({ label, value, onChange, type = 'text', required = false, placeholder = '' }) {
-  return <label className="form-group">{label}<input type={type} value={value} onChange={(event) => onChange(event.target.value)} required={required} placeholder={placeholder} /></label>
+  return (
+    <label className="form-group">
+      {label}
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required={required}
+        placeholder={placeholder}
+      />
+    </label>
+  )
 }
 
 export default LandingPage

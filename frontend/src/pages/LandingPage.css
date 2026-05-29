@@ -65,7 +65,9 @@
   }
 }
 
-/* ── Fixed navbar ── */
+/* ─────────────────────────────────────────
+   Fixed navbar
+───────────────────────────────────────── */
 .landing-header {
   position: fixed;
   top: 0;
@@ -164,6 +166,9 @@
   }
 }
 
+/* ─────────────────────────────────────────
+   Mobile nav drawer
+───────────────────────────────────────── */
 .mobile-nav {
   background: rgba(42, 31, 20, 0.55);
   display: none;
@@ -201,6 +206,9 @@
   font-size: 1.5rem;
 }
 
+/* ─────────────────────────────────────────
+   Buttons
+───────────────────────────────────────── */
 .landing-btn {
   align-items: center;
   border: 1px solid transparent;
@@ -250,14 +258,16 @@
   }
 }
 
-/* ── Hero: only offset by navbar height ── */
+/* ─────────────────────────────────────────
+   Hero
+───────────────────────────────────────── */
 .landing-hero {
   height: 100vh;
   isolation: isolate;
+  margin-top: var(--nav-h);
   overflow: hidden;
   padding: 0 !important;
   position: relative;
-  margin-top: var(--nav-h);
 }
 
 .hero-bg {
@@ -279,6 +289,9 @@
   position: absolute;
 }
 
+/* ─────────────────────────────────────────
+   Ticker
+───────────────────────────────────────── */
 .ticker-wrap {
   background: rgba(245, 194, 143, 0.55);
   border-bottom: 1px solid rgba(184, 137, 59, 0.4);
@@ -288,6 +301,7 @@
   position: absolute;
   right: 0;
   top: 0;
+  z-index: 5;
 }
 
 .ticker-track {
@@ -315,6 +329,9 @@
   margin: 0 1.5rem;
 }
 
+/* ─────────────────────────────────────────
+   Hero inner layout
+───────────────────────────────────────── */
 .hero-inner {
   align-items: flex-start;
   color: var(--ivory);
@@ -373,6 +390,9 @@
   margin-top: 2rem;
 }
 
+/* ─────────────────────────────────────────
+   Pricing banner
+───────────────────────────────────────── */
 .pricing-banner {
   animation: shimmer-border 3s ease-in-out infinite;
   background: rgba(255, 255, 255, 0.08);
@@ -463,15 +483,14 @@
   }
 }
 
-/* ── Mobile: pricing banner full width ── */
 @media (max-width: 767px) {
   .pricing-banner {
+    box-sizing: border-box;
+    margin: 0;
     max-width: 100%;
     min-width: 0;
-    width: 100%;
     padding: 1.25rem 1rem;
-    margin: 0;
-    box-sizing: border-box;
+    width: 100%;
   }
 
   .price-label {
@@ -483,30 +502,56 @@
   }
 
   .hero-inner {
+    gap: 1.5rem;
     padding-bottom: 2.5rem;
     padding-top: 5rem;
-    gap: 1.5rem;
   }
 }
 
-/* ── Astro strip: in normal document flow, sticky to top of nav when scrolled ── */
+/* ─────────────────────────────────────────
+   Astro strip — JS-driven sticky
+   
+   Default: normal flow (relative).
+   When .astro-strip-fixed is added by JS,
+   the strip goes fixed under the navbar and
+   the .astro-strip-spacer takes its place
+   so content below doesn't jump.
+───────────────────────────────────────── */
 .astro-strip {
-  position: sticky;
-  top: var(--nav-h);
-  z-index: 45;
-  background: rgba(244, 236, 220, 0.93);
-  border-bottom: 1px solid rgba(184, 137, 59, 0.35);
-  height: var(--strip-h);
-  overflow: hidden;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  background: rgba(244, 236, 220, 0.93);
+  border-bottom: 1px solid rgba(184, 137, 59, 0.35);
   box-shadow: 0 2px 14px -4px rgba(74, 52, 20, 0.14);
+  height: var(--strip-h);
+  overflow: hidden;
+  /* Default: in normal document flow */
+  position: relative;
+  z-index: 45;
   transition: box-shadow 0.3s ease;
+  left: 0;
+  right: 0;
+  width: 100%;
 }
 
-/* Elevated shadow when stuck to navbar */
-.astro-strip.astro-strip-stuck {
-  box-shadow: 0 4px 20px -4px rgba(74, 52, 20, 0.22);
+/* Applied by JS once the strip should lock under the navbar */
+.astro-strip.astro-strip-fixed {
+  position: fixed;
+  top: var(--nav-h);
+  left: 0;
+  right: 0;
+  width: 100%;
+  box-shadow: 0 4px 24px -4px rgba(74, 52, 20, 0.28);
+}
+
+/* Spacer inserted by JS to hold layout when strip goes fixed */
+.astro-strip-spacer {
+  display: none;
+  height: var(--strip-h);
+}
+
+.astro-strip-spacer.active {
+  display: block;
 }
 
 .astro-float {
@@ -538,7 +583,13 @@
   box-shadow: 0 0 0 3px rgba(244, 236, 220, 0.9);
   height: 60px;
   overflow: hidden;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
   width: 60px;
+}
+
+.astro-circle:hover {
+  border-color: var(--gold-light);
+  box-shadow: 0 0 0 5px rgba(184, 137, 59, 0.22), 0 0 16px 4px rgba(212, 168, 87, 0.32);
 }
 
 .astro-circle img {
@@ -559,6 +610,9 @@
   font-size: 0.9rem;
 }
 
+/* ─────────────────────────────────────────
+   Section heads & typography
+───────────────────────────────────────── */
 .section-head {
   margin: 0 auto;
   max-width: 48rem;
@@ -583,6 +637,9 @@
   background: linear-gradient(180deg, rgba(244, 236, 220, 0.55), rgba(251, 247, 239, 0.9));
 }
 
+/* ─────────────────────────────────────────
+   Grids
+───────────────────────────────────────── */
 .landing-grid {
   display: grid;
   gap: 1.5rem;
@@ -618,6 +675,9 @@
   }
 }
 
+/* ─────────────────────────────────────────
+   Cards
+───────────────────────────────────────── */
 .landing-card {
   background: white;
   border: 1px solid var(--border);
@@ -633,6 +693,9 @@
   transform: translateY(-4px);
 }
 
+/* ─────────────────────────────────────────
+   Concern cards
+───────────────────────────────────────── */
 .concern {
   display: flex;
   flex-direction: column;
@@ -693,6 +756,7 @@
   justify-content: center;
   opacity: 0;
   padding: 1.5rem;
+  pointer-events: none;
   position: absolute;
   text-align: center;
   transform: translateY(8px);
@@ -719,6 +783,9 @@
   transform: translateY(0);
 }
 
+/* ─────────────────────────────────────────
+   Service cards
+───────────────────────────────────────── */
 .service {
   display: flex;
   flex-direction: column;
@@ -770,6 +837,9 @@
   margin-top: auto;
 }
 
+/* ─────────────────────────────────────────
+   Two-column layout
+───────────────────────────────────────── */
 .two-col {
   align-items: center;
   display: grid;
@@ -783,6 +853,9 @@
   }
 }
 
+/* ─────────────────────────────────────────
+   Horoscope
+───────────────────────────────────────── */
 .zodiac {
   display: flex;
   flex-wrap: wrap;
@@ -869,6 +942,9 @@
   padding-top: 1rem;
 }
 
+/* ─────────────────────────────────────────
+   Kundli / Compatibility
+───────────────────────────────────────── */
 .rounded-img {
   aspect-ratio: 1 / 1;
   border-radius: 1.5rem;
@@ -940,6 +1016,9 @@
   font-size: 0.75rem;
 }
 
+/* ─────────────────────────────────────────
+   AI card
+───────────────────────────────────────── */
 .ai-card {
   box-shadow: var(--shadow-soft);
   margin: 0 auto;
@@ -959,6 +1038,9 @@
   margin-top: 2rem;
 }
 
+/* ─────────────────────────────────────────
+   Shop / Products
+───────────────────────────────────────── */
 .flex-between {
   align-items: flex-end;
   display: flex;
@@ -1022,6 +1104,9 @@
   font-size: 0.75rem;
 }
 
+/* ─────────────────────────────────────────
+   Testimonials
+───────────────────────────────────────── */
 .testimonial {
   display: flex;
   flex-direction: column;
@@ -1056,6 +1141,9 @@
   color: var(--muted);
 }
 
+/* ─────────────────────────────────────────
+   Trust stats
+───────────────────────────────────────── */
 .trust-section {
   padding: 3rem 0 !important;
 }
@@ -1078,6 +1166,9 @@
   text-transform: uppercase;
 }
 
+/* ─────────────────────────────────────────
+   FAQ
+───────────────────────────────────────── */
 .faq-wrap {
   max-width: 48rem;
 }
@@ -1119,7 +1210,9 @@
   color: var(--muted);
 }
 
-/* ── Footer ── */
+/* ─────────────────────────────────────────
+   Footer
+───────────────────────────────────────── */
 .landing-page footer {
   background: var(--grad-cream);
   border-top: 1px solid var(--border);
@@ -1158,7 +1251,6 @@
   padding: 0;
 }
 
-/* Newsletter row */
 .news {
   display: flex;
   gap: 0.5rem;
@@ -1190,14 +1282,12 @@
   text-align: center;
 }
 
-/* ── Tablet footer: 2 cols ── */
 @media (min-width: 480px) {
   .foot {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-/* ── Desktop footer: 4 cols ── */
 @media (min-width: 768px) {
   .foot {
     grid-template-columns: repeat(4, 1fr);
@@ -1205,50 +1295,48 @@
   }
 }
 
-/* ── Mobile footer fixes ── */
 @media (max-width: 479px) {
   .foot {
     grid-template-columns: 1fr;
     text-align: center;
   }
 
-  /* Centre logo inside first footer column */
   .foot > div:first-child {
+    align-items: center;
     display: flex;
     flex-direction: column;
-    align-items: center;
   }
 
-  /* Centre each footer nav column */
   .foot > div {
+    align-items: center;
     display: flex;
     flex-direction: column;
-    align-items: center;
   }
 
   .foot ul {
     align-items: center;
   }
 
-  /* Newsletter: stack input + button vertically */
   .news {
-    flex-direction: column;
     align-items: stretch;
+    flex-direction: column;
   }
 
   .news input {
-    width: 100%;
     text-align: center;
+    width: 100%;
   }
 
   .news button {
-    width: 100%;
     padding: 0.65rem 1rem;
     text-align: center;
+    width: 100%;
   }
 }
 
-/* ── Modal ── */
+/* ─────────────────────────────────────────
+   Modal
+───────────────────────────────────────── */
 .modal-overlay {
   align-items: center;
   background: rgba(0, 0, 0, 0.5);
@@ -1324,7 +1412,9 @@
   margin-top: 0.75rem;
 }
 
-/* ── Animations ── */
+/* ─────────────────────────────────────────
+   Scroll animations
+───────────────────────────────────────── */
 .anim-fade-up,
 .anim-fade-in {
   opacity: 0;
@@ -1338,6 +1428,9 @@
   transform: translateY(0);
 }
 
+/* ─────────────────────────────────────────
+   Small-screen tweaks
+───────────────────────────────────────── */
 @media (max-width: 640px) {
   .ticker-item {
     font-size: 0.85rem;
