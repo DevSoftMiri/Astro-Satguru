@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+const optionalNumber = z.preprocess((value) => (value === '' || value === null ? undefined : value), z.coerce.number().optional())
+
 const customerBody = z.object({
   fullName: z.string().min(2),
   phone: z.string().min(7),
@@ -8,9 +10,18 @@ const customerBody = z.object({
   dateOfBirth: z.coerce.date().optional(),
   timeOfBirth: z.string().optional(),
   placeOfBirth: z.string().optional(),
+  birthLatitude: optionalNumber,
+  birthLongitude: optionalNumber,
+  birthTimezoneOffset: z.string().optional(),
   address: z.string().optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  horoscopeData: z.unknown().optional(),
+  kundliData: z.unknown().optional(),
+  matchHistory: z.array(z.unknown()).optional(),
+  aiAstrologerChats: z.array(z.unknown()).optional(),
+  generatedReports: z.array(z.unknown()).optional(),
+  visitHistory: z.array(z.unknown()).optional(),
   questionPlan: z.enum(['ONE_QUESTION', 'TWO_QUESTIONS', 'UNLIMITED_QUESTIONS']),
   planExpiryDate: z.coerce.date().optional(),
 })

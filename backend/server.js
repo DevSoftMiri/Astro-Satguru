@@ -9,6 +9,7 @@ import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { connectDB } from './config/db.js'
 import analyticsRoutes from './routes/analyticsRoutes.js'
+import astrologyRoutes from './routes/astrologyRoutes.js'
 import authRoutes from './routes/authRoutes.js'
 import consultationRoutes from './routes/consultationRoutes.js'
 import customerRoutes from './routes/customerRoutes.js'
@@ -67,6 +68,7 @@ app.use('/api/customers', customerRoutes)
 app.use('/api/consultations', consultationRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/analytics', analyticsRoutes)
+app.use('/api/astrology', astrologyRoutes)
 app.use('/api/uploads', uploadRoutes)
 
 app.use(notFound)
